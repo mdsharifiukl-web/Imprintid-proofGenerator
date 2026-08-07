@@ -1,14 +1,10 @@
 // Local development entry point — run with `npm start`.
 // Vercel doesn't use this file at all (it uses api/index.js instead); this
 // exists purely so you can still run and test the app on your own machine
-// exactly like before, serving the frontend yourself since Vercel's native
-// static file serving isn't available locally.
+// exactly like before. Static file serving and all routes now live in
+// api/app.js itself, so this file just starts it listening.
 
-const path = require('path');
-const express = require('express');
 const app = require('./api/app');
-
-app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
 

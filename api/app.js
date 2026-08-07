@@ -1,13 +1,11 @@
-// ImprintID API — shared between local development (server.js) and Vercel
-// (api/index.js both just require this file). All the actual route logic
-// lives here in one place so there's a single source of truth.
-//
-// This file intentionally does NOT serve static files (the public/ folder)
-// — on Vercel that's handled natively and faster via vercel.json, and
-// locally server.js adds that on top of this app. This file is API-only.
+// ImprintID API + static frontend — shared between local development
+// (server.js) and Vercel (api/index.js both just require this file). All
+// the actual route/serving logic lives here in one place so there's a
+// single source of truth.
 
 require('dotenv').config();
 
+const path = require('path');
 const express = require('express');
 const bcFieldMap = require('./bc-field-map.js');
 const { kvGet, kvSet, kvDelete, kvList } = require('./lib/db');
@@ -17,6 +15,12 @@ const app = express();
 // Generous body size limit — proofs and product photos are embedded as
 // base64 images, which can be a few MB each once several are combined.
 app.use(express.json({ limit: '150mb' }));
+
+// Serves public/index.html (and anything else in that folder) directly from
+// this same function — explicit and self-contained, rather than relying on
+// Vercel's separate automatic static-file layer, which didn't reliably
+// apply to this project's request routing.
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---------------------------------------------------------------
 // Storage API — same get/set/delete/list shape the app already expects
