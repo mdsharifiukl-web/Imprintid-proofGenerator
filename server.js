@@ -6,7 +6,7 @@
 
 const path = require('path');
 const express = require('express');
-const app = require('./app');
+const app = require('./api/app');
 
 app.use(express.static(path.join(__dirname, 'public')));
 

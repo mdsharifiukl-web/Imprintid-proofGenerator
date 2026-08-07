@@ -1,5 +1,5 @@
-// Vercel serverless entry point. Vercel auto-detects any file in /api as a
-// function — this one just hands off to the shared Express app in app.js,
-// which is where all the actual route logic lives. vercel.json routes every
-// /api/* request here.
-module.exports = require('../app');
+// Vercel serverless entry point. Everything this needs (app.js, lib/db.js,
+// bc-field-map.js) lives in this same api/ folder — keeping the require
+// chain inside one directory tree is what makes Vercel's automatic
+// dependency bundler reliably include all of it.
+module.exports = require('./app');
