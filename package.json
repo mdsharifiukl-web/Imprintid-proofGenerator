@@ -4,7 +4,7 @@
   "description": "ImprintID proof generator — Express API + static frontend, deployable to Vercel with Postgres storage, or runnable locally for development.",
   "main": "server.js",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node server.js",
