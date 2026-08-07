@@ -113,6 +113,38 @@ Vercel and use its connection string locally instead.
 - **`bc-field-map.js`** — Business Central custom field mapping, plain
   English, edit directly if your field names differ.
 
+## Planning ahead: moving to AWS later
+
+This is built with a future AWS move in mind, so it's worth knowing what
+will and won't need to change when that happens:
+
+**Won't need to change:**
+- `api/app.js` — the actual Express app (all routes, all logic). This is
+  plain Express with no Vercel-specific code in it at all.
+- `api/lib/db.js` — uses the standard `pg` driver, which works against any
+  real Postgres server over the normal wire protocol. Moving from Neon to
+  AWS RDS or Aurora Postgres is just a connection-string change, not a
+  code change.
+- `server.js` — already runs the app as a normal long-running Node
+  process. This is very close to what you'd deploy on AWS.
+
+**Will need to change (only at actual migration time):**
+- `api/index.js` and `vercel.json` are Vercel-specific — these get
+  replaced by whichever AWS compute you land on:
+  - **EC2, ECS/Fargate, or Elastic Beanstalk** — the simplest path, since
+    these just run `server.js` directly (same as running it locally),
+    no serverless wrapper needed at all.
+  - **AWS Lambda** (if you want to stay serverless) — would need a small
+    adapter (the `serverless-http` package is the standard way to wrap an
+    existing Express app for Lambda) plus an API Gateway in front of it.
+- The database connection string moves from Neon's to RDS/Aurora's — same
+  `DATABASE_URL` environment variable, different value.
+- Photos are currently stored as base64 text inside the database (same
+  approach the original local SQLite version used) — this still works
+  fine on AWS as-is. If the catalog grows large enough that this becomes
+  slow or expensive, moving photos to S3 (with the database just storing
+  a URL) would be the natural next step, but isn't necessary up front.
+
 ## Limitations worth knowing
 
 - **Cold starts:** serverless functions "sleep" when idle and take a
