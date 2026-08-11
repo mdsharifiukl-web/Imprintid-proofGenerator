@@ -171,6 +171,18 @@
   .stage-toolbar .status.dirty{color:var(--stamp);}
 
   #proofSheet{width:760px;max-width:100%;background:#fff;box-shadow:0 6px 24px rgba(22,35,63,.18);padding:26px 30px 26px;position:relative;}
+  .rush-stamp-wrap{
+    position:absolute; top:6%; right:4%; z-index:6;
+    background:#C41E1E; color:#fff;
+    font-family:'IBM Plex Sans',sans-serif; font-weight:800; font-style:italic;
+    font-size:20px; line-height:1.05; letter-spacing:1.5px; text-align:center;
+    padding:8px 18px; border-radius:2px;
+    transform:rotate(-9deg);
+    box-shadow:0 3px 10px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.55);
+    outline:1px dashed rgba(255,255,255,.6); outline-offset:-6px;
+    text-shadow:0 1px 1px rgba(0,0,0,.25);
+    pointer-events:none; user-select:none;
+  }
 
   .sheet-header-outer{border:2px solid var(--ring);border-radius:8px;padding:5px;margin-bottom:18px;}
   .sheet-header-inner{background:var(--ink);border-radius:5px;padding:14px 20px;text-align:center;}
@@ -364,6 +376,14 @@
           <div class="helper" id="versionHint" style="margin-top:4px;"></div>
         </div>
       </div>
+      <div class="field">
+        <label for="orderTypeSelect">Order Type</label>
+        <select id="orderTypeSelect">
+          <option value="Regular">Regular</option>
+          <option value="Rush Order">Rush Order</option>
+        </select>
+        <div class="helper" id="orderTypeHint" style="margin-top:4px;">Auto-fills from Business Central if connected — change it manually anytime.</div>
+      </div>
       <div class="inline-btn-row" style="margin-bottom:6px;">
         <button class="btn-ghost btn-small" id="pullBcBtn">🔍 Pull from Business Central</button>
       </div>
@@ -425,20 +445,22 @@
 
       <div class="row2">
         <div class="field">
-          <label for="imprintWidthIn">Imprint Width (in)</label>
+          <label for="imprintWidthIn">Logo Width (in)</label>
           <input type="number" step="0.001" min="0" id="imprintWidthIn" placeholder="2.3">
         </div>
         <div class="field">
-          <label for="imprintHeightIn">Imprint Height (in)</label>
+          <label for="imprintHeightIn">Logo Height (in)</label>
           <input type="number" step="0.001" min="0" id="imprintHeightIn" placeholder="1.041">
         </div>
       </div>
+      <div class="helper" style="margin:-8px 0 12px;">Starts at the maximum size for the selected imprint method — reduce either number to make the logo smaller. It's always sized on the item relative to the product's real dimensions (set once per product in Manage Products), so it prints at true scale either way.</div>
+      <div class="helper" id="logoSizeWarning" style="display:none;margin:-8px 0 12px;color:#B23A2E;font-weight:600;"></div>
       <div class="field">
         <label for="imprintArea">Imprint Area <span class="hint">auto-filled, editable</span></label>
         <input type="text" id="imprintArea" placeholder='e.g. 2.3" W x 1.041" H'>
       </div>
 
-      <div class="row2">
+      <div class="row2" style="display:none;">
         <div class="field">
           <label for="referenceWidthIn">Product Width (in)</label>
           <input type="number" step="0.01" min="0" id="referenceWidthIn" placeholder="3.5">
@@ -448,7 +470,7 @@
           <input type="number" step="0.01" min="0" id="referenceHeightIn" placeholder="8.5">
         </div>
       </div>
-      <button class="btn-ghost btn-small" id="autoFitLogoBtn" style="width:100%;margin-bottom:12px;">⌖ Auto-scale logo from product &amp; imprint size</button>
+      <button class="btn-ghost btn-small" id="autoFitLogoBtn" style="width:100%;margin-bottom:12px;">⌖ Reset logo to maximum size</button>
 
       <div class="field">
         <label for="totalQty">Total Quantity <span class="req-star" title="Required">*</span></label>
@@ -614,6 +636,7 @@
                   <div class="tri">⚠</div>
                   <div class="wtext"><span class="wtitle">NOTE&nbsp;</span><span id="warningText"></span></div>
                 </div>
+                <div class="rush-stamp-wrap" id="rushStamp" style="display:none;">RUSH<br>ORDER</div>
               </div>
               <div class="ag-caption" id="primaryCellCaption" style="display:none;">
                 <div class="ag-color" id="primaryCellColorName"></div>
@@ -909,6 +932,7 @@
   function freshState(){
     return {
       orderNo:'', version:'v1',
+      orderType:'Regular', // 'Regular' | 'Rush Order'
       productId:null, itemCode:'', itemName:'',
       referenceWidthIn:'', referenceHeightIn:'',
       productBodyRect:null, productBodyRectBack:null,
@@ -2119,6 +2143,7 @@
   function applyImprintAreaPreset(){
     const method = effectiveImprintMethod();
     const hint = $('imprintAreaAutoHint');
+    $('logoSizeWarning').style.display = 'none'; // fresh preset load — any previous warning no longer applies
     if(!method || !state.imprintAreas.length){ hint.style.display='none'; return; }
     const preset = state.imprintAreas.find(a=>a.method.toLowerCase() === method.toLowerCase());
     if(preset){
@@ -2313,6 +2338,12 @@
     renderAll();
   });
 
+  $('orderTypeSelect').addEventListener('change', (e)=>{
+    state.orderType = e.target.value;
+    markDirty();
+    renderAll();
+  });
+
   /* ============================= BUSINESS CENTRAL PULL ============================= */
   let bcConfigured = false;
   async function checkBcStatus(){
@@ -2393,6 +2424,10 @@
 
       if(data.totalQty){ state.totalQty = String(data.totalQty); $('totalQty').value = state.totalQty; }
       if(data.specialRequest){ state.specialRequest = data.specialRequest; $('specialRequest').value = state.specialRequest; }
+      if(data.orderType){
+        state.orderType = /rush/i.test(data.orderType) ? 'Rush Order' : 'Regular';
+        $('orderTypeSelect').value = state.orderType;
+      }
 
       markDirty();
       renderAll();
@@ -2410,7 +2445,6 @@
 
   const simpleFieldMap = [
     ['version','version'],
-    ['imprintWidthIn','imprintWidthIn'], ['imprintHeightIn','imprintHeightIn'],
     ['imprintArea','imprintArea'],
     ['referenceWidthIn','referenceWidthIn'], ['referenceHeightIn','referenceHeightIn'],
     ['totalQty','totalQty'], ['specialRequest','specialRequest'],
@@ -2424,15 +2458,71 @@
     });
   });
 
+  // Looks up the maximum Logo Width/Height allowed for the currently
+  // selected imprint method, from that product's catalog preset — this is
+  // the shop's real physical printable-area ceiling for that method, not
+  // just a suggestion, so exceeding it is treated as an input error. This
+  // is the source of truth for the ceiling; the Logo Width/Height fields
+  // themselves now always show the logo's actual current size instead.
+  function getImprintPresetMax(){
+    const method = effectiveImprintMethod();
+    if(!method || !state.imprintAreas || !state.imprintAreas.length) return null;
+    return state.imprintAreas.find(a=>a.method.toLowerCase()===method.toLowerCase()) || null;
+  }
   ['imprintWidthIn','imprintHeightIn'].forEach(id=>{
-    $(id).addEventListener('input', ()=>{
-      if(state.imprintWidthIn || state.imprintHeightIn){
-        const w = state.imprintWidthIn ? (parseFloat(state.imprintWidthIn) + '" W') : '';
-        const h = state.imprintHeightIn ? (parseFloat(state.imprintHeightIn) + '" H') : '';
-        state.imprintArea = [w,h].filter(Boolean).join(' x ');
-        $('imprintArea').value = state.imprintArea;
+    $(id).addEventListener('input', (e)=>{
+      const val = parseFloat(e.target.value);
+      const logoObj = state.logo;
+      const aspect = logoObj && logoObj.aspect;
+
+      // No logo yet (or invalid/empty input) — nothing to fit against, so
+      // just behave like a plain text field until a logo exists. Imprint
+      // Area is left alone here too — it always reflects the method's
+      // maximum (from applyImprintAreaPreset), never the raw typed value.
+      if(!state.logoImageData || !aspect || !val || val <= 0){
+        state.imprintWidthIn = $('imprintWidthIn').value;
+        state.imprintHeightIn = $('imprintHeightIn').value;
+        markDirty();
+        renderAll();
+        return;
       }
-      rescaleLogoForCurrentMethod();
+
+      // A logo exists — treat the typed number as the REAL size you want,
+      // keep the other dimension locked to the logo's own aspect ratio
+      // (you can't stretch a logo without distorting it), then clamp both
+      // against the catalog's true ceiling for this imprint method.
+      let targetW, targetH;
+      if(id === 'imprintWidthIn'){ targetW = val; targetH = val / aspect; }
+      else { targetH = val; targetW = val * aspect; }
+
+      const preset = getImprintPresetMax();
+      const warnEl = $('logoSizeWarning');
+      let capped = false;
+      if(preset){
+        const maxW = parseFloat(preset.widthIn) || Infinity;
+        const maxH = parseFloat(preset.heightIn) || Infinity;
+        if(targetW > maxW + 0.0005 || targetH > maxH + 0.0005){
+          const scale = Math.min(maxW/targetW, maxH/targetH, 1);
+          targetW *= scale; targetH *= scale;
+          capped = true;
+        }
+      }
+      if(capped){
+        const maxLabel = [isFinite(parseFloat(preset.widthIn))?(parseFloat(preset.widthIn)+'" W'):null, isFinite(parseFloat(preset.heightIn))?(parseFloat(preset.heightIn)+'" H'):null].filter(Boolean).join(' x ');
+        warnEl.textContent = '⚠ That exceeds the maximum printable size for ' + effectiveImprintMethod() + ' on this item (' + maxLabel + ') — capped at the limit.';
+        warnEl.style.display = 'block';
+        toast('Logo size capped — cannot exceed the maximum for this imprint method (' + maxLabel + ').');
+      } else {
+        warnEl.style.display = 'none';
+      }
+
+      const wPct = inchesToWpct(targetW, state._bodyAreaStageRect);
+      if(wPct != null){
+        state.logo.wPct = wPct;
+        applyLogoBox(); // syncs the Logo Width/Height fields + the sidebar readout to the final actual size
+      }
+      markDirty();
+      renderAll(); // rebuilds the proof's own Logo Size row, which applyLogoBox() alone doesn't touch
     });
   });
   ['referenceWidthIn','referenceHeightIn'].forEach(id=>{
@@ -2875,14 +2965,16 @@
   // both by the manual "Auto-scale" button and automatically right after a
   // logo upload.
   // Works out the logo's fitted real-world size (inches) within the imprint
-  // area's max width/height — classic "contain" logic: a wide/horizontal
-  // logo gets capped by the imprint width, a tall/vertical logo gets capped
-  // by the imprint height, whichever one it actually hits first at its own
-  // aspect ratio. Returns null if there isn't enough info yet (no logo, or
-  // imprint/product dimensions not filled in).
+  // method's true maximum width/height (from the catalog preset) — classic
+  // "contain" logic: a wide/horizontal logo gets capped by the imprint
+  // width, a tall/vertical logo gets capped by the imprint height,
+  // whichever one it actually hits first at its own aspect ratio. Returns
+  // null if there isn't enough info yet (no logo, or no preset for this
+  // item/method yet).
   function computeLogoFitInches(logoObj){
-    const iw = parseFloat(state.imprintWidthIn);
-    const ih = parseFloat(state.imprintHeightIn);
+    const preset = getImprintPresetMax();
+    const iw = preset ? parseFloat(preset.widthIn) : NaN;
+    const ih = preset ? parseFloat(preset.heightIn) : NaN;
     const aspect = (logoObj && logoObj.aspect) || null;
     if(!aspect || (!iw && !ih)) return null;
     let widthIn, heightIn;
@@ -2897,19 +2989,25 @@
     }
     return { widthIn, heightIn };
   }
-  function computeAutoFitLogoScale(bodyStageRect, logoObj){
+  // Converts a target real logo width (inches) into the stage width
+  // percentage needed to render it at that size — the reverse of
+  // computeCurrentLogoSizeInches below. Used both by auto-fit and by
+  // manual Logo Width/Height edits, so both paths agree with each other.
+  function inchesToWpct(widthIn, bodyStageRect){
     const refW = parseFloat(state.referenceWidthIn);
     const refH = parseFloat(state.referenceHeightIn);
-    const ref = refW || refH; // prefer width as the scale reference, fall back to height
-    if(!ref) return null;
-    const fit = computeLogoFitInches(logoObj || state.logo);
-    if(!fit) return null;
-    const fraction = fit.widthIn / ref; // fitted logo width as a fraction of the product/body's real width
+    const ref = refW || refH;
+    if(!ref || !widthIn) return null;
+    const fraction = widthIn / ref;
     if(bodyStageRect){
-      // scale relative to how big the body area actually renders on the stage
       return clamp(fraction * bodyStageRect.wPct, 1, 95);
     }
     return clamp(fraction * 100, 2, 80);
+  }
+  function computeAutoFitLogoScale(bodyStageRect, logoObj){
+    const fit = computeLogoFitInches(logoObj || state.logo);
+    if(!fit) return null;
+    return inchesToWpct(fit.widthIn, bodyStageRect);
   }
   // Given the logo's CURRENT size on the stage (however it got there — auto-
   // fit or manually resized), works out what that translates to in real
@@ -2937,9 +3035,22 @@
     if(!el) return;
     if(!state.logoImageData){ el.textContent = 'Upload a logo to see its size.'; return; }
     const size = computeCurrentLogoSizeInches(state.logo, state._bodyAreaStageRect);
-    if(!size){ el.textContent = 'Enter Product Width/Height and Imprint Width/Height to see logo size.'; return; }
+    if(!size){ el.textContent = 'Select an item (for its product size) and enter a Logo Width/Height to see logo size.'; return; }
     state.logoSizeText = formatInches(size.widthIn) + ' W x ' + formatInches(size.heightIn) + ' H';
     el.textContent = 'Current logo size: ' + state.logoSizeText;
+
+    // Keep the Logo Width/Height fields showing the logo's real, actual
+    // current size — not a theoretical max — so what's on the form always
+    // matches what's on the proof. Imprint Area is intentionally left
+    // alone here: that field shows the imprint METHOD's maximum printable
+    // size (set by applyImprintAreaPreset / Manage Products), which is a
+    // separate, fixed fact about the method — not the logo's own size.
+    const roundedW = Math.round(size.widthIn*1000)/1000;
+    const roundedH = Math.round(size.heightIn*1000)/1000;
+    state.imprintWidthIn = roundedW;
+    state.imprintHeightIn = roundedH;
+    if(document.activeElement !== $('imprintWidthIn')) $('imprintWidthIn').value = roundedW;
+    if(document.activeElement !== $('imprintHeightIn')) $('imprintHeightIn').value = roundedH;
   }
   // Re-sizes an already-placed logo (without moving it) whenever the imprint
   // method or its width/height changes — so the logo's size always tracks
@@ -2958,9 +3069,10 @@
     updateLogoSizeReadout();
   }
   $('autoFitLogoBtn').addEventListener('click', ()=>{
+    applyImprintAreaPreset(); // reset Logo Width/Height back to this method's maximum, undoing any manual reduction
     const pct = computeAutoFitLogoScale(state._bodyAreaStageRect, state.logo);
     if(pct == null){
-      toast('Enter Product Width/Height (in) and Imprint Width/Height (in) first.');
+      toast('Select an item and imprint method with a size preset first (set these up in Manage Products).');
       return;
     }
     state.logo.wPct = pct;
@@ -2973,7 +3085,7 @@
     applyLogoBox();
     applyLogoBoxBack();
     markDirty();
-    toast('Logo scaled to ' + pct.toFixed(1) + '% — proportionate to the printable body.');
+    toast('Logo reset to maximum size (' + pct.toFixed(1) + '%) for this imprint method.');
   });
   window.addEventListener('resize', ()=>{ applyLogoBox(); applyLogoBoxBack(); });
 
@@ -3062,6 +3174,7 @@
     // header
     $('outOrderNo').textContent = state.orderNo || '—';
     $('outVersion').textContent = state.version || 'v1';
+    $('rushStamp').style.display = (state.orderType === 'Rush Order') ? 'block' : 'none';
 
     // product details pill rows
     const itemColorDisplay = state.colorMode==='assorted'
@@ -3286,6 +3399,7 @@
     $('orderNoSuffix').value = state.orderNo.replace(/^SO-/i, '');
     $('version').value = state.version;
     updateVersionFieldState();
+    $('orderTypeSelect').value = state.orderType || 'Regular';
     $('imprintWidthIn').value = state.imprintWidthIn;
     $('imprintHeightIn').value = state.imprintHeightIn;
     $('imprintArea').value = state.imprintArea;
@@ -3674,6 +3788,20 @@
       doc.roundedRect(x,y,w,h,r,r,'F');
     }
 
+    // Rush Order badge — the simple rotated red rectangle badge, drawn
+    // over the item photo instead of near the header.
+    function drawRushBadge(x, y, w, h){
+      doc.setFillColor('#C41E1E');
+      doc.roundedRect(x, y, w, h, 3, 3, 'F');
+      doc.setDrawColor('#ffffff');
+      doc.setLineWidth(0.8);
+      doc.roundedRect(x, y, w, h, 3, 3, 'D');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(Math.max(8, h*0.42));
+      doc.setTextColor('#ffffff');
+      doc.text('RUSH ORDER', x + w/2, y + h/2 + h*0.16, {align:'center'});
+    }
+
     // Header: outer ring + inner dark pill
     roundRectFill(margin, margin, pageW - margin*2, 36, 7, ring);
     roundRectFill(margin+3, margin+3, pageW - margin*2 - 6, 30, 5, ink);
@@ -3918,6 +4046,10 @@
       const halfW = (stageSize - gap) / 2;
       doc.addImage(stageDataUrl, 'PNG', stageX, y2, halfW, halfW);
       doc.addImage(stageBackDataUrl, 'PNG', stageX + halfW + gap, y2, halfW, halfW);
+      if(state.orderType === 'Rush Order'){
+        const bw = Math.min(halfW*0.62, 72), bh = bw*0.34;
+        drawRushBadge(stageX + halfW - bw - 6, y2 + 6, bw, bh);
+      }
 
       const capY = y2 + halfW + 18;
       doc.setFont('helvetica','normal');
@@ -3932,6 +4064,10 @@
       y3 = capY + 34;
     } else {
       doc.addImage(stageDataUrl, 'PNG', stageX, y2, stageSize, stageSize);
+      if(state.orderType === 'Rush Order'){
+        const bw = Math.min(stageSize*0.34, 108), bh = bw*0.34;
+        drawRushBadge(stageX + stageSize - bw - 10, y2 + 10, bw, bh);
+      }
 
       // QC callout, if set — drawn directly instead of screenshotted
       if(state.warningNote && state.warningNote.trim()){

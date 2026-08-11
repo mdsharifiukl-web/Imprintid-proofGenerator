@@ -17,16 +17,47 @@
 
 const { Pool } = require('pg');
 
-const connectionString =
+const rawConnectionString =
   process.env.DATABASE_URL ||
   process.env.POSTGRES_URL ||
   process.env.DATABASE_URL_UNPOOLED ||
   process.env.POSTGRES_URL_NON_POOLING;
 
+// Neon's pooled connection string includes "channel_binding=require" — a
+// newer, fairly obscure Postgres security parameter. Node's own URL parser
+// handles it fine, but the "pg" library's internal connection-string parser
+// doesn't, and silently corrupts the parsed host (this is what was causing
+// "getaddrinfo ENOTFOUND base"). It isn't needed for the connection itself
+// to work (sslmode=require already covers the encryption requirement), so
+// it's safe to drop before handing the string to pg.
+function sanitizeConnectionString(str) {
+  if (!str) return str;
+  try {
+    const url = new URL(str);
+    url.searchParams.delete('channel_binding');
+    return url.toString();
+  } catch (e) {
+    return str; // couldn't parse — leave as-is, the real error will surface below
+  }
+}
+const connectionString = sanitizeConnectionString(rawConnectionString);
+
 if (!connectionString) {
   console.error('[db] No database connection string found in environment variables.');
   console.error('[db] Checked: DATABASE_URL, POSTGRES_URL, DATABASE_URL_UNPOOLED, POSTGRES_URL_NON_POOLING.');
   console.error('[db] Make sure a Postgres database (e.g. Neon) is connected to this project in the Storage tab.');
+} else {
+  // Logs only the host/port/database — never the username or password —
+  // so a misconfigured .env file (stray quotes, a line break in the
+  // middle of the string, a partial paste, etc.) is immediately obvious
+  // in the terminal instead of showing up later as a cryptic DNS error.
+  try {
+    const parsed = new URL(connectionString);
+    console.log(`[db] Connection string parsed OK — host: ${parsed.hostname}, port: ${parsed.port || '(default)'}, database: ${parsed.pathname.replace('/', '') || '(none)'}`);
+  } catch (e) {
+    console.error('[db] DATABASE_URL does not look like a valid connection string:', e.message);
+    console.error('[db] It should be ONE line, starting with postgresql:// or postgres://, with no surrounding quotes.');
+  }
 }
 
 let pool = null;

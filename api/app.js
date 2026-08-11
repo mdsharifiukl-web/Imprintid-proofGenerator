@@ -188,7 +188,8 @@ app.get('/api/bc/order/:orderNo', async (req, res) => {
       itemColor: readCustomField(bcFieldMap.itemColorField),
       imprintMethod: readCustomField(bcFieldMap.imprintMethodField),
       totalQty: totalQty || firstItemLine.quantity || '',
-      specialRequest: readCustomField(bcFieldMap.specialRequestField) || order.externalDocumentNumber || ''
+      specialRequest: readCustomField(bcFieldMap.specialRequestField) || order.externalDocumentNumber || '',
+      orderType: readCustomField(bcFieldMap.orderTypeField, true) // always header-level
     });
   } catch (err) {
     console.error('[Business Central] lookup failed:', err.message);

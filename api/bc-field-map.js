@@ -32,6 +32,14 @@ module.exports = {
   imprintMethodField: 'imprintMethod',
   specialRequestField: 'specialRequest',
 
+  // Order Type (Regular vs Rush) is almost always a property of the whole
+  // order, not a per-line/per-color detail — this one is always read from
+  // the order header regardless of the customFieldsOn setting above.
+  // Whatever text this field returns gets matched loosely: if it contains
+  // the word "rush" (any case), ImprintID treats it as a Rush Order;
+  // anything else (or empty) defaults to Regular.
+  orderTypeField: 'orderType',
+
   // If your BC partner built a completely separate custom API page for
   // these fields (rather than adding them to the standard Sales Order API),
   // put its path here instead — e.g. 'contoso/promo/v1.0'. Leave blank to
