@@ -65,13 +65,16 @@
     font-family:'IBM Plex Sans',sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--paper-dark);color:var(--ink);}
-  body{min-height:100vh;}
+  html,body{margin:0;padding:0;background:var(--paper-dark);color:var(--ink);height:100%;}
+  body{overflow:hidden;}
   ::selection{background:var(--steel-light);}
   .mono{font-family:'IBM Plex Mono',monospace;}
 
   /* ---------- App shell ---------- */
-  .app{display:flex;flex-direction:column;min-height:100vh;}
+  /* Fixed to the viewport height (not min-height) so the two columns below
+     can each scroll independently within it, instead of the whole page
+     growing taller and scrolling as one long unit. */
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
   .topbar{display:flex;align-items:center;justify-content:space-between;background:var(--ink);color:var(--paper);padding:12px 20px;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--stamp);}
   .topbar .brand{display:flex;align-items:center;gap:10px;}
   .brand-mark{width:30px;height:30px;border:2px solid var(--stamp);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10px;color:var(--stamp);transform:rotate(-8deg);letter-spacing:-1px;}
@@ -86,6 +89,7 @@
   .btn-secondary{background:transparent;color:var(--paper);border-color:#3f4f72;}
   .btn-secondary:hover{background:#223354;}
   .btn-ghost{background:var(--white);color:var(--ink);border-color:var(--line);}
+  .btn-ghost.active{background:var(--steel);color:#fff;border-color:var(--steel);}
   .btn-ghost:hover{background:var(--steel-light);}
   .btn-small{padding:6px 10px;font-size:12px;}
   .btn-danger{background:transparent;color:var(--stamp);border-color:var(--stamp);}
@@ -93,10 +97,18 @@
   button:disabled{opacity:.45;cursor:not-allowed;}
 
   .layout{flex:1;display:grid;grid-template-columns:380px 1fr;gap:0;min-height:0;}
-  @media (max-width:980px){ .layout{grid-template-columns:1fr;} }
+  @media (max-width:980px){
+    .layout{grid-template-columns:1fr;}
+    /* Independent scrolling columns work well side-by-side, but stacked on
+       a narrow screen they'd just be two cramped scroll boxes — fall back
+       to one natural, continuous page scroll instead. */
+    html,body{height:auto;overflow:visible;}
+    .app{height:auto;overflow:visible;}
+    .panel,.stage-wrap{height:auto;overflow-y:visible;}
+  }
 
   /* ---------- Form panel ---------- */
-  .panel{background:var(--paper);border-right:1px solid var(--line);padding:22px 20px 60px;overflow-y:auto;}
+  .panel{background:var(--paper);border-right:1px solid var(--line);padding:22px 20px 60px;overflow-y:auto;height:100%;min-height:0;}
   .panel h2{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--steel);margin:26px 0 12px;display:flex;align-items:center;gap:8px;}
   .panel h2:first-child{margin-top:0;}
   .panel h2::after{content:'';flex:1;height:1px;background:var(--line);}
@@ -164,7 +176,7 @@
   .swatch-chip.selected::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;text-shadow:0 0 2px rgba(0,0,0,.6);}
 
   /* ---------- Preview / stage ---------- */
-  .stage-wrap{background:var(--paper-dark);display:flex;flex-direction:column;align-items:center;padding:30px 20px 60px;overflow-y:auto;}
+  .stage-wrap{background:var(--paper-dark);display:flex;flex-direction:column;align-items:center;padding:30px 20px 60px;overflow-y:auto;height:100%;min-height:0;}
   .stage-toolbar{width:100%;max-width:760px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
   .stage-toolbar .status{font-size:12px;color:var(--slate);font-family:'IBM Plex Mono',monospace;}
   .stage-toolbar .status.saved{color:var(--success);}
@@ -540,6 +552,16 @@
         <button class="btn-ghost btn-small" id="centerOnBodyBtn">⌖ Center on body area</button>
         <button class="btn-ghost btn-small" id="centerLogoBtn">Center logo</button>
       </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Logo Rotation</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn-ghost btn-small rotate-btn" data-deg="0" title="Normal">⬜ Normal</button>
+          <button class="btn-ghost btn-small rotate-btn" data-deg="90" title="Rotate 90° — vertical">↻ Vertical (90°)</button>
+          <button class="btn-ghost btn-small rotate-btn" data-deg="270" title="Rotate 270° — vertical, other direction">↺ Vertical (270°)</button>
+          <button class="btn-ghost btn-small rotate-btn" data-deg="180" title="Upside down">🔃 180°</button>
+        </div>
+        <div class="helper" style="margin-top:4px;">Rotating swaps the logo's effective width/height, and it's automatically re-fit to the imprint method's maximum size either way.</div>
+      </div>
 
       <div id="backLogoPlacementSection" style="display:none;">
         <h2>Back Logo Placement</h2>
@@ -549,6 +571,15 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
           <button class="btn-ghost btn-small" id="centerLogoBackBtn">Center logo</button>
+        </div>
+        <div class="field" style="margin-top:10px;">
+          <label>Back Logo Rotation</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn-ghost btn-small rotate-btnBack" data-deg="0" title="Normal">⬜ Normal</button>
+            <button class="btn-ghost btn-small rotate-btnBack" data-deg="90" title="Rotate 90° — vertical">↻ Vertical (90°)</button>
+            <button class="btn-ghost btn-small rotate-btnBack" data-deg="270" title="Rotate 270° — vertical, other direction">↺ Vertical (270°)</button>
+            <button class="btn-ghost btn-small rotate-btnBack" data-deg="180" title="Upside down">🔃 180°</button>
+          </div>
         </div>
       </div>
 
@@ -958,8 +989,8 @@
       itemImageDataBack:null,
       logoImageData:null, logoImageName:'',
       logoImageDataBack:null, logoImageNameBack:'',
-      logo:{xPct:50,yPct:50,wPct:20,aspect:1},
-      logoBack:{xPct:50,yPct:50,wPct:20,aspect:1},
+      logo:{xPct:50,yPct:50,wPct:20,aspect:1,baseAspect:1,rotation:0},
+      logoBack:{xPct:50,yPct:50,wPct:20,aspect:1,baseAspect:1,rotation:0},
       notes: DEFAULT_NOTES.slice(),
       storageKey:null,
       updatedAt:null
@@ -2663,29 +2694,51 @@
 
     return canvas.toDataURL('image/png');
   }
-  async function computeLogoDisplaySrc(rawSrc){
+  // Rotates an image 90/180/270 degrees via canvas — for 90/270 the canvas
+  // dimensions are swapped (a wide image becomes a tall one), matching the
+  // effective aspect-ratio swap already applied to state.logo.aspect.
+  async function rotateImageDataUrl(src, degrees){
+    if(!src || !degrees) return src;
+    const img = await loadImageElGlobal(src);
+    if(!img) return src;
+    const swapped = (degrees === 90 || degrees === 270);
+    const canvas = document.createElement('canvas');
+    canvas.width = swapped ? img.naturalHeight : img.naturalWidth;
+    canvas.height = swapped ? img.naturalWidth : img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.rotate(degrees * Math.PI / 180);
+    ctx.drawImage(img, -img.naturalWidth/2, -img.naturalHeight/2);
+    return canvas.toDataURL('image/png');
+  }
+  async function computeLogoDisplaySrc(rawSrc, rotation){
     if(!rawSrc) return null;
     const mode = getLogoColorMode();
-    if(mode === 'full') return rawSrc;
-    const img = await loadImageElGlobal(rawSrc);
-    if(!img) return rawSrc;
-    if(mode === 'engrave') return engraveLogoImg(img, state.productMetalHex);
-    if(mode === 'embroidery') return embroideryLogoImg(img);
-    if(mode === 'pantone') return tintLogoToColor(img, getPrintColorHex());
-    return rawSrc;
+    let result = rawSrc;
+    if(mode !== 'full'){
+      const img = await loadImageElGlobal(rawSrc);
+      if(img){
+        if(mode === 'engrave') result = engraveLogoImg(img, state.productMetalHex);
+        else if(mode === 'embroidery') result = embroideryLogoImg(img);
+        else if(mode === 'pantone') result = tintLogoToColor(img, getPrintColorHex());
+      }
+    }
+    if(rotation){ result = await rotateImageDataUrl(result, rotation); }
+    return result;
   }
-  // Recomputes the (possibly tinted) logo shown everywhere — stage, back
-  // stage, logo swatch box, assorted-color gallery — whenever anything that
-  // affects its appearance changes: a fresh upload, the imprint method, the
-  // selected print color, or a manual color-mode override.
+  // Recomputes the (possibly tinted, possibly rotated) logo shown
+  // everywhere — stage, back stage, logo swatch box, assorted-color
+  // gallery — whenever anything that affects its appearance changes: a
+  // fresh upload, the imprint method, the selected print color, a manual
+  // color-mode override, or a rotation change.
   async function refreshLogoDisplay(){
     const requestToken = (refreshLogoDisplay._token = (refreshLogoDisplay._token||0) + 1);
-    const front = await computeLogoDisplaySrc(state.logoImageData);
+    const front = await computeLogoDisplaySrc(state.logoImageData, state.logo.rotation);
     if(requestToken !== refreshLogoDisplay._token) return;
     state._logoDisplayData = front;
 
     const backRawSrc = state.sameLogoBothSides ? state.logoImageData : state.logoImageDataBack;
-    const back = await computeLogoDisplaySrc(backRawSrc);
+    const back = await computeLogoDisplaySrc(backRawSrc, state.logoBack.rotation);
     if(requestToken !== refreshLogoDisplay._token) return;
     state._logoDisplayDataBack = back;
 
@@ -2781,6 +2834,8 @@
       state.logoImageData = dataUrl;
       state.logoImageName = file.name;
       state.logo.aspect = aspect;
+      state.logo.baseAspect = aspect;
+      state.logo.rotation = 0; // a fresh upload starts unrotated
       // center it on the body area (or the stage center if no body area is
       // set yet), and size it proportionately if we have enough info to
       // do so (product size + imprint width already entered)
@@ -2796,6 +2851,7 @@
       $('logoLayer').style.display = 'flex';
       markDirty();
       applyLogoBox();
+      updateRotationButtons('front');
       renderAll();
       refreshLogoDisplay();
       if(bgRemoved) toast('Logo uploaded — background automatically removed.');
@@ -2960,6 +3016,20 @@
     markDirty();
   });
 
+  document.querySelectorAll('.rotate-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!state.logoImageData){ toast('Upload a logo first.'); return; }
+      setLogoRotation('front', parseInt(btn.dataset.deg, 10));
+    });
+  });
+  document.querySelectorAll('.rotate-btnBack').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const hasBackLogo = state.sameLogoBothSides ? state.logoImageData : state.logoImageDataBack;
+      if(!hasBackLogo){ toast('Upload a back logo first.'); return; }
+      setLogoRotation('back', parseInt(btn.dataset.deg, 10));
+    });
+  });
+
   // Shared math: how big should the logo be, as a % of the stage, given the
   // product's real-world size and the imprint width already entered? Used
   // both by the manual "Auto-scale" button and automatically right after a
@@ -3052,6 +3122,40 @@
     if(document.activeElement !== $('imprintWidthIn')) $('imprintWidthIn').value = roundedW;
     if(document.activeElement !== $('imprintHeightIn')) $('imprintHeightIn').value = roundedH;
   }
+  // Rotating a logo 90°/270° swaps which of its own dimensions is wider —
+  // a logo that was 3x wider than tall becomes 3x taller than wide once
+  // stood on its side. state.logo.aspect is what every sizing/fit
+  // calculation in the app already reads, so updating it here (derived
+  // from the never-changing baseAspect) makes rotation correctly ripple
+  // through everywhere automatically — the fit against the imprint
+  // method's max area, the on-stage bounding box shape, all of it.
+  function setLogoRotation(side, degrees){
+    const logoObj = (side === 'back') ? state.logoBack : state.logo;
+    logoObj.rotation = degrees;
+    const rotated = (degrees === 90 || degrees === 270);
+    logoObj.aspect = rotated ? (1 / (logoObj.baseAspect || 1)) : (logoObj.baseAspect || 1);
+
+    // re-fit within the max imprint area now that the effective shape changed
+    if(side === 'back'){
+      const pct = computeAutoFitLogoScale(state._bodyAreaStageRectBack, state.logoBack);
+      if(pct != null) state.logoBack.wPct = pct;
+    } else {
+      const pct = computeAutoFitLogoScale(state._bodyAreaStageRect, state.logo);
+      if(pct != null) state.logo.wPct = pct;
+    }
+    applyLogoBox();
+    applyLogoBoxBack();
+    markDirty();
+    refreshLogoDisplay(); // re-bakes the rotation (and any color treatment) into the displayed image
+    updateRotationButtons(side);
+  }
+  function updateRotationButtons(side){
+    const suffix = side === 'back' ? 'Back' : '';
+    const logoObj = side === 'back' ? state.logoBack : state.logo;
+    document.querySelectorAll('.rotate-btn' + suffix).forEach(btn=>{
+      btn.classList.toggle('active', parseInt(btn.dataset.deg,10) === (logoObj.rotation||0));
+    });
+  }
   // Re-sizes an already-placed logo (without moving it) whenever the imprint
   // method or its width/height changes — so the logo's size always tracks
   // the current method's real imprint dimensions relative to the product,
@@ -3126,6 +3230,8 @@
       state.logoImageDataBack = dataUrl;
       state.logoImageNameBack = file.name;
       state.logoBack.aspect = aspect;
+      state.logoBack.baseAspect = aspect;
+      state.logoBack.rotation = 0;
       const bodyRectBack = state._bodyAreaStageRectBack;
       state.logoBack.xPct = bodyRectBack ? bodyRectBack.xPct : 50;
       state.logoBack.yPct = bodyRectBack ? bodyRectBack.yPct : 50;
@@ -3137,6 +3243,7 @@
       markDirty();
       updateStageImage();
       applyLogoBoxBack();
+      updateRotationButtons('back');
       renderAll();
       refreshLogoDisplay();
       if(bgRemoved) toast('Logo uploaded — background automatically removed.');
@@ -3450,6 +3557,8 @@
     updateStageImage();
     applyLogoBox();
     applyLogoBoxBack();
+    updateRotationButtons('front');
+    updateRotationButtons('back');
     renderAll();
     updateStatusLine();
     refreshLogoDisplay();
